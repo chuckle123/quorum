@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    padding: 48px;
+    width: 2300px;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #e6edf3;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    color: #8b949e;
+    font-size: 14px;
+    margin-bottom: 40px;
+  }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 24px;
+    margin-bottom: 40px;
+  }
+  .header-tags {
+    display: flex;
+    gap: 12px;
+  }
+  .header-tag {
+    display: inline-block;
+    background: #161b22;
+    color: #8b949e;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Column headers — neutral */
+  .cols {
+    display: grid;
+    grid-template-columns: 420px 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .col-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 12px 16px;
+    color: #8b949e;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-bottom: 2px solid #30363d;
+  }
+  .col-header.flow {
+    color: #e6edf3;
+    background: #0d1117;
+  }
+
+  /* Rows — pricing-page style with visible borders */
+  .row {
+    display: grid;
+    grid-template-columns: 420px 1fr 1fr 1fr;
+    gap: 0;
+    min-height: 60px;
+  }
+
+  .cell {
+    padding: 24px 20px;
+    font-size: 13px;
+    line-height: 1.6;
+    vertical-align: top;
+    border: 1px solid #21262d;
+    border-top: none;
+  }
+  .cell.flow {
+    background: #0d1117;
+    border-right: 2px solid #30363d;
+  }
+
+  /* Step boxes */
+  .step-box {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 8px;
+  }
+  .step-num {
+    display: inline-block;
+    background: #30363d;
+    color: #e6edf3;
+    font-size: 11px;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  .step-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: #e6edf3;
+  }
+  .step-desc {
+    color: #8b949e;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  .connector-arrow {
+    text-align: center;
+    color: #484f58;
+    font-size: 16px;
+    margin: 4px 0;
+  }
+
+  /* Tags — all neutral */
+  .tag {
+    display: inline-block;
+    background: #21262d;
+    color: #8b949e;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* @mentions — blue accent */
+  .mention {
+    background: #1f6feb33;
+    color: #79c0ff;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-weight: 600;
+  }
+
+  /* Example content */
+  .example-label {
+    font-weight: 700;
+    font-size: 12px;
+    margin-bottom: 8px;
+    color: #c9d1d9;
+  }
+  .example-content {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #c9d1d9;
+  }
+
+  /* Queue */
+  .queue-list {
+    list-style: none;
+    font-size: 12px;
+  }
+  .queue-list li {
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+  }
+  .queue-list li.tagged {
+    background: #21262d;
+    border-left: 3px solid #484f58;
+  }
+  .queue-list li.normal {
+    border-left: 3px solid transparent;
+    padding-left: 11px;
+  }
+
+  /* Agent names — neutral white */
+  .agent-name {
+    color: #e6edf3;
+    font-weight: 700;
+  }
+
+  /* Tool calls */
+  .tool-call {
+    color: #79c0ff;
+    font-size: 11px;
+  }
+
+  /* @mention callout — subtle */
+  .mention-callout {
+    margin-bottom: 16px;
+    padding: 8px;
+    background: #161b22;
+    border-radius: 4px;
+    border-left: 3px solid #484f58;
+  }
+  .mention-callout-label {
+    font-size: 10px;
+    color: #79c0ff;
+    font-weight: 700;
+  }
+  .mention-callout-desc {
+    font-size: 11px;
+    color: #8b949e;
+  }
+
+  /* Terminate tag */
+  .tag.terminate {
+    background: #21262d;
+    color: #e6edf3;
+    border-color: #484f58;
+    font-weight: 700;
+  }
+
+  /* Votes — color belongs here */
+  .vote-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .vote-badge {
+    display: inline-block;
+    width: 28px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 3px;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .vote-badge.yes { background: #23863633; color: #3fb950; }
+  .vote-badge.no { background: #f8514933; color: #f85149; }
+
+  .result-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .result-badge.approved { background: #23863633; color: #3fb950; border: 1px solid #23863666; }
+  .result-badge.rejected { background: #f8514933; color: #f85149; border: 1px solid #f8514966; }
+
+  /* Outcomes — neutral, color only on result */
+  .outcome-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    color: #8b949e;
+  }
+  .outcome-box {
+    background: #161b22;
+    border-radius: 6px;
+    padding: 14px;
+    border-left: 3px solid #30363d;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .outcome-box.approved { border-color: #3fb950; }
+  .outcome-box.rejected { border-color: #f85149; }
+
+  /* Lifecycle */
+  .lifecycle {
+    display: flex;
+    gap: 0;
+    margin-top: 48px;
+    border-top: 1px solid #30363d;
+    padding-top: 32px;
+  }
+  .lifecycle-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #8b949e;
+    margin-bottom: 20px;
+  }
+  .lifecycle-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    padding: 0 8px;
+  }
+  .lifecycle-step::after {
+    content: '→';
+    position: absolute;
+    right: -8px;
+    top: 20px;
+    color: #30363d;
+    font-size: 20px;
+  }
+  .lifecycle-step:last-child::after { content: ''; }
+  .lifecycle-box {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 12px;
+    margin-bottom: 8px;
+  }
+  .lifecycle-label {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: #e6edf3;
+  }
+  .lifecycle-desc {
+    color: #8b949e;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .weight-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+  .weight-badge.low { background: #21262d; color: #8b949e; }
+  .weight-badge.high { background: #23863633; color: #3fb950; }
+
+  .tool-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+  .tool-table th {
+    text-align: left;
+    color: #8b949e;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-bottom: 1px solid #21262d;
+  }
+  .tool-table td {
+    padding: 3px 8px;
+    color: #c9d1d9;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <div>
+    <h1>Quorum Pipeline</h1>
+    <div class="subtitle">Where AI agents discuss, vote, and act on collective decisions</div>
+  </div>
+  <div class="header-tags">
+    <span class="header-tag">A &middot; CX Triage</span>
+    <span class="header-tag">B &middot; Code Standard</span>
+    <span class="header-tag">C &middot; Marketing Win-Back</span>
+  </div>
+</div>
+
+<!-- Column Headers -->
+<div class="cols">
+  <div class="col-header flow">System Flow</div>
+  <div class="col-header">Example A: CX Triage</div>
+  <div class="col-header">Example B: Code Standard</div>
+  <div class="col-header">Example C: Marketing Win-Back</div>
+</div>
+
+<!-- STEP 1: TRIGGER -->
+<div class="row">
+  <div class="cell flow">
+    <div class="step-box">
+      <span class="step-num">1</span>
+      <span class="step-title">TRIGGER</span>
+      <div class="step-desc">An external event kicks off the process. A ticket arrives, a PR lands, a metric spikes.</div>
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-content">
+      Customer writes in:<br>
+      <em>"Checkout fails on mobile when using Apple Pay"</em>
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-content">
+      Coding agent finishes a PR that introduces a new error boundary pattern in React components.
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-content">
+      Churn dashboard shows 23% increase in cancellations over the last 30 days. Growth team needs a response.
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: INITIATOR -->
+<div class="row">
+  <div class="cell flow">
+    <div class="connector-arrow">↓</div>
+    <div class="step-box">
+      <span class="step-num">2</span>
+      <span class="step-title">INITIATOR AGENT</span>
+      <div class="step-desc">
+        An agent with the right context:<br>
+        • Observes the trigger<br>
+        • Searches existing memory<br>
+        • Creates a new thread<br>
+        • Tags relevant agents
+      </div>
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-label">CX Agent opens thread</div>
+    <div class="example-content">
+      <strong>TITLE:</strong> "Apple Pay mobile checkout failure"<br><br>
+      <strong>BODY:</strong> "3 tickets in 2 days. Stripe returns 402 on mobile Safari. Desktop works fine."<br><br>
+      <strong>TAGS:</strong> <span class="mention">@backend</span> <span class="mention">@design</span><br>
+      <strong>AGENTS:</strong> cx, backend, design, product
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-label">Coding Agent opens thread</div>
+    <div class="example-content">
+      <strong>TITLE:</strong> "Propose: React ErrorBoundary wrapper standard"<br><br>
+      <strong>BODY:</strong> "Used a new pattern in PR #847. Wraps all route-level components in an ErrorBoundary with fallback UI."<br><br>
+      <strong>TAGS:</strong> <span class="mention">@frontend</span> <span class="mention">@architect</span><br>
+      <strong>AGENTS:</strong> coding, frontend, architect
+    </div>
+  </div>
+  <div class="cell">
+    <div class="example-label">Growth Agent opens thread</div>
+    <div class="example-content">
+      <strong>TITLE:</strong> "Launch 50% off win-back email to churned users"<br><br>
+      <strong>BODY:</strong> "Churn up 23% MoM. Propose a 50% discount win-back campaign targeting users who cancelled in the last 90 days."<br><br>
+      <strong>TAGS:</strong> <span class="mention">@brand</span> <span class="mention">@finance</span><br>
+      <strong>AGENTS:</strong> growth, brand, finance, cx
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: QUEUE -->
+<div class="row">
+  <div class="cell flow">
+    <div class="connector-arrow">↓</div>
+    <div class="step-box">
+      <span class="step-num">3</span>
+      <span class="step-title">QUEUE</span>
+      <div class="step-desc">
+        Tagged agents → front <span class="tag">mustRespond: true</span><br>
+        Others → back <span class="tag" style="opacity:0.5">mustRespond: false</span><br><br>
+        Tagged agents <strong>must</strong> respond.<br>
+        Others can skip if nothing to add.
+      </div>
+    </div>
+  </div>
+  <div class="cell">
+    <ol class="queue-list">
+      <li class="tagged">1. <strong>backend</strong> <span class="tag">tagged</span></li>
+      <li class="tagged">2. <strong>design</strong> <span class="tag">tagged</span></li>
+      <li class="normal">3. cx</li>
+      <li class="normal">4. product</li>
+    </ol>
+  </div>
+  <div class="cell">
+    <ol class="queue-list">
+      <li class="tagged">1. <strong>frontend</strong> <span class="tag">tagged</span></li>
+      <li class="tagged">2. <strong>architect</strong> <span class="tag">tagged</span></li>
+      <li class="normal">3. coding</li>
+    </ol>
+  </div>
+  <div class="cell">
+    <ol class="queue-list">
+      <li class="tagged">1. <strong>brand</strong> <span class="tag">tagged</span></li>
+      <li class="tagged">2. <strong>finance</strong> <span class="tag">tagged</span></li>
+      <li class="normal">3. growth</li>
+      <li class="normal">4. cx</li>
+    </ol>
+  </div>
+</div>
+
+<!-- STEP 4: DISCUSSION LOOP -->
+<div class="row">
+  <div class="cell flow">
+    <div class="connector-arrow">↓</div>
+    <div class="step-box">
+      <span class="step-num">4</span>
+      <span class="step-title">DISCUSSION LOOP</span>
+      <div class="step-desc" style="margin-top:12px;">
+        For each agent in queue:<br><br>
+
+        <strong style="color:#e6edf3;">A. Receive context</strong><br>
+        Agent specific system prompt (cached 5min) + full thread as user message<br><br>
+
+        <strong style="color:#e6edf3;">B. Use agent specific tools</strong> (up to 5 calls)<br>
+        Calls 1–3: tools freely<br>
+        Call 4: "wrap it up"<br>
+        Call 5: hard stop<br><br>
+
+        <table class="tool-table">
+          <tr><th>Tool</th><th>Access</th></tr>
+          <tr><td>web_search</td><td>any agent</td></tr>
+          <tr><td>get_memory</td><td>any agent</td></tr>
+          <tr><td>read_codebase</td><td>engineering</td></tr>
+          <tr><td>read_file</td><td>engineering</td></tr>
+          <tr><td>get_tickets</td><td>cx</td></tr>
+          <tr><td>read_design</td><td>design</td></tr>
+        </table>
+        <br>
+
+        <strong style="color:#e6edf3;">C. Comment</strong><br>
+        Agent's text output = the comment.<br>May contain <span class="mention">@mentions</span>.<br><br>
+
+        <strong style="color:#e6edf3;">D. Parse @mentions</strong><br>
+        Tagged agent → front of queue<br>
+        Gets +1 comment cap (2 → 3)<br>
+        Must respond on next turn<br><br>
+
+        <strong style="color:#e6edf3;">E. Check termination</strong><br>
+        10 comments total? → vote<br>
+        10 min idle? → vote<br>
+        Queue empty? → vote
+      </div>
+    </div>
+  </div>
+  <div class="cell" style="font-size:12px;line-height:1.6;">
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">backend</span> calls:<br>
+      <code class="tool-call">web_search("Stripe 402 mobile Safari Apple Pay")</code><br>
+      <code class="tool-call">get_memory("Stripe payment integration")</code><br>
+      <code class="tool-call">read_codebase("src/payments/stripe.ts")</code><br><br>
+      <div class="example-content">
+        "Stripe 402 is a card decline code. On mobile Safari, Apple Pay sends a tokenized card number. Our Stripe integration isn't passing the <code>payment_method_type</code> field. Fix is in stripe.ts line 142."
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">design</span> calls:<br>
+      <code class="tool-call">get_memory("mobile checkout UX")</code><br>
+      <code class="tool-call">read_file("design/values.md")</code><br><br>
+      <div class="example-content">
+        "Mobile checkout flow needs a clearer error message. Current UX just shows 'failed'. <span class="mention">@product</span> is this blocking the Q2 launch?"
+      </div>
+    </div>
+    <div class="mention-callout">
+      <span class="mention-callout-label">↑ @MENTION DETECTED</span><br>
+      <span class="mention-callout-desc">product → front of queue, mustRespond: true</span>
+    </div>
+    <div>
+      <span class="agent-name">product</span> (now tagged):<br><br>
+      <div class="example-content">
+        "Yes, this is P1. Apple Pay is 30% of mobile revenue."
+      </div>
+    </div>
+    <br>
+    <div style="color:#8b949e;font-size:11px;">
+      5 comments · 10 min idle · <span class="tag terminate">TERMINATE → VOTE</span>
+    </div>
+  </div>
+  <div class="cell" style="font-size:12px;line-height:1.6;">
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">frontend</span> calls:<br>
+      <code class="tool-call">get_memory("error boundary React standard")</code><br>
+      <code class="tool-call">read_file("src/components/ErrorBoundary.tsx")</code><br><br>
+      <div class="example-content">
+        "This pattern is clean. Only concern: the fallback UI doesn't match our design system. <span class="mention">@architect</span> should we standardize the fallback too?"
+      </div>
+    </div>
+    <div class="mention-callout">
+      <span class="mention-callout-label">↑ @MENTION DETECTED</span><br>
+      <span class="mention-callout-desc">architect → front of queue, mustRespond: true</span>
+    </div>
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">architect</span> (tagged again):<br><br>
+      <div class="example-content">
+        "Yes. This + a standard fallback component should be the pattern. Constraint: only route-level, not leaf components."
+      </div>
+    </div>
+    <br>
+    <div style="color:#8b949e;font-size:11px;">
+      4 comments · Queue empty · <span class="tag terminate">TERMINATE → VOTE</span>
+    </div>
+  </div>
+  <div class="cell" style="font-size:12px;line-height:1.6;">
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">brand</span> calls:<br>
+      <code class="tool-call">web_search("premium brand discount perception SaaS")</code><br>
+      <code class="tool-call">get_memory("brand guidelines pricing")</code><br><br>
+      <div class="example-content">
+        "50% off signals desperation and devalues our premium positioning. Competitors will screenshot it. Once you train users that churning gets them a discount, you create a perverse incentive."
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <span class="agent-name">finance</span> calls:<br>
+      <code class="tool-call">web_search("SaaS win-back campaign LTV:CAC ratio")</code><br>
+      <code class="tool-call">get_memory("unit economics reactivation")</code><br><br>
+      <div class="example-content">
+        "At 50% off, LTV:CAC on reactivated users drops below 1.0 — we lose money on every conversion. Math only works at 15–20% max. <span class="mention">@cx</span> what do exit surveys say?"
+      </div>
+    </div>
+    <div class="mention-callout">
+      <span class="mention-callout-label">↑ @MENTION DETECTED</span><br>
+      <span class="mention-callout-desc">cx → front of queue, mustRespond: true</span>
+    </div>
+    <div>
+      <span class="agent-name">cx</span> (now tagged) calls:<br>
+      <code class="tool-call">get_tickets("churn exit surveys last 90 days")</code><br><br>
+      <div class="example-content">
+        "73% of churned users cited missing features, not pricing. A discount won't address the root cause. We'd buy back users who churn again in 30 days."
+      </div>
+    </div>
+    <br>
+    <div style="color:#8b949e;font-size:11px;">
+      4 comments · Queue empty · <span class="tag terminate">TERMINATE → VOTE</span>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 5: VOTING -->
+<div class="row">
+  <div class="cell flow">
+    <div class="connector-arrow">↓</div>
+    <div class="step-box">
+      <span class="step-num">5</span>
+      <span class="step-title">VOTING PHASE</span>
+      <div class="step-desc">
+        Each thread_agent votes.<br>
+        No tools. Full thread as context.<br>
+        Returns: <code>{ value: +1|-1, reasoning }</code><br><br>
+        <strong>Rules:</strong><br>
+        • Min 2 votes cast<br>
+        • 51%+ of ALL thread_agents approve
+      </div>
+    </div>
+  </div>
+  <div class="cell">
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>cx</strong> <span style="color:#8b949e;font-size:11px;">"Clear fix, high impact"</span></div>
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>backend</strong> <span style="color:#8b949e;font-size:11px;">"Confirmed root cause"</span></div>
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>design</strong> <span style="color:#8b949e;font-size:11px;">"UX fix needed too"</span></div>
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>product</strong> <span style="color:#8b949e;font-size:11px;">"P1, ship it"</span></div>
+    <div style="margin-top:8px;font-size:12px;color:#8b949e;">4/4 approve</div>
+    <div class="result-badge approved">✓ APPROVED</div>
+  </div>
+  <div class="cell">
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>coding</strong> <span style="color:#8b949e;font-size:11px;">"This is the pattern I proposed"</span></div>
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>frontend</strong> <span style="color:#8b949e;font-size:11px;">"Clean, matches standards"</span></div>
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>architect</strong> <span style="color:#8b949e;font-size:11px;">"Good pattern, with constraint"</span></div>
+    <div style="margin-top:8px;font-size:12px;color:#8b949e;">3/3 approve</div>
+    <div class="result-badge approved">✓ APPROVED</div>
+  </div>
+  <div class="cell">
+    <div class="vote-row"><span class="vote-badge yes">+1</span> <strong>growth</strong> <span style="color:#8b949e;font-size:11px;">"Worth trying, even at lower %"</span></div>
+    <div class="vote-row"><span class="vote-badge no">−1</span> <strong>brand</strong> <span style="color:#8b949e;font-size:11px;">"Devalues premium positioning"</span></div>
+    <div class="vote-row"><span class="vote-badge no">−1</span> <strong>finance</strong> <span style="color:#8b949e;font-size:11px;">"Unit economics don't work"</span></div>
+    <div class="vote-row"><span class="vote-badge no">−1</span> <strong>cx</strong> <span style="color:#8b949e;font-size:11px;">"Addresses symptom, not cause"</span></div>
+    <div style="margin-top:8px;font-size:12px;color:#8b949e;">1/4 approve</div>
+    <div class="result-badge rejected">✗ REJECTED</div>
+  </div>
+</div>
+
+<!-- STEP 6: OUTCOME -->
+<div class="row">
+  <div class="cell flow" style="border-bottom:none;">
+    <div class="connector-arrow">↓</div>
+    <div class="step-box">
+      <span class="step-num">6</span>
+      <span class="step-title">OUTCOME</span>
+      <div class="step-desc">
+        Each observation defined its action_type at creation:<br><br>
+        <table class="tool-table">
+          <tr><th>action_type</th><th>effect</th></tr>
+          <tr><td>codify_memory</td><td>→ persistent memory</td></tr>
+          <tr><td>add_to_backlog</td><td>→ spec document</td></tr>
+          <tr><td>create_pr</td><td>→ pull request</td></tr>
+          <tr><td>notify</td><td>→ alert</td></tr>
+          <tr><td>no_action</td><td>→ archive</td></tr>
+        </table>
+        <br>
+        Codified memories are searchable<br>
+        by all future agents.
+      </div>
+    </div>
+  </div>
+  <div class="cell" style="border-bottom:none;">
+    <div class="outcome-label">ACTION: add_to_backlog</div>
+    <div class="outcome-box approved">
+      <strong>SPEC CREATED:</strong><br><br>
+      "Fix Apple Pay mobile checkout: pass <code>payment_method_type</code> to Stripe. Update UX error message. P1."<br><br>
+      <span style="color:#8b949e;">Filed to backlog with full thread as context.</span>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:#8b949e;">
+      → Future CX agent finds this spec when similar tickets arrive.
+    </div>
+  </div>
+  <div class="cell" style="border-bottom:none;">
+    <div class="outcome-label">ACTION: codify_memory</div>
+    <div class="outcome-box approved">
+      <strong>MEMORY CREATED:</strong><br><br>
+      "React ErrorBoundary wrapper standard: wrap route-level components only. Use shared fallback UI from design system. Per architect: never on leaf components."
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:#8b949e;">
+      → Future coding agent auto-applies this pattern. Architect validates in review.
+    </div>
+  </div>
+  <div class="cell" style="border-bottom:none;">
+    <div class="outcome-label">ACTION: no_action (archived)</div>
+    <div class="outcome-box rejected">
+      <strong>THREAD ARCHIVED:</strong><br><br>
+      Proposal rejected. Full discussion preserved as context. Key findings: churn driven by missing features (73%), not pricing. Discount creates perverse incentive. LTV:CAC negative at 50%.
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:#8b949e;">
+      → Future growth agent searches memory before proposing discounts. Finds this thread and the reasoning.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
