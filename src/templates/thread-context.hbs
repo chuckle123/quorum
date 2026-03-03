@@ -1,0 +1,15 @@
+## Thread: {{observation.title}}
+
+{{observation.body}}
+
+{{#if comments.length}}
+### Discussion ({{comments.length}} comments)
+
+{{#each comments}}
+**{{this.agentName}}** ({{this.timeAgo}}):
+{{this.body}}
+
+{{/each}}
+{{else}}
+No comments yet. You are the first to respond.
+{{/if}}

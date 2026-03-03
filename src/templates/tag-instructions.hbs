@@ -1,0 +1,4 @@
+To mention another agent, write @their_id in your response.
+Available agents: {{#each agents}}@{{this.id}}{{#unless @last}}, {{/unless}}{{/each}}
+If you tag an agent, they will be prioritized to respond next.
+Only tag someone if you have a specific question or point for them.
