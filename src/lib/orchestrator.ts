@@ -10,20 +10,19 @@ import {
   addTag,
   addVote,
   getVotes,
-  hasBeenTagged,
+  getTagCount,
   updateObservationPhase,
   updateObservationResult,
   getThreadAgentIds,
 } from "./db";
-import { renderSystemPrompt, renderUserMessage, renderVotePrompt } from "./prompts";
+import { renderSystemPrompt, renderUserMessage, renderVotePrompt, renderThreadContext } from "./prompts";
 import { webSearchTool } from "./tools";
 import { parseMentions, reorderQueue } from "./tags";
 import type { QueueEntry } from "./types";
 
 const MAX_TOTAL_COMMENTS = 10;
 const MAX_IDLE_MS = 10 * 60 * 1000; // 10 minutes
-const BASE_COMMENT_CAP = 2;
-const TAG_BONUS = 1;
+const BASE_COMMENT_CAP = 1;
 const MAX_TOOL_CALLS = 5;
 
 function cachedSystem(text: string) {
@@ -124,10 +123,10 @@ export async function runOrchestrator(observationId: string): Promise<void> {
     const entry = queue.shift()!;
     const { agentId, mustRespond } = entry;
 
-    // Check per-agent comment cap
+    // Check per-agent comment cap: 1 base + 1 per unique agent that tagged them
     const agentCommentCount = getAgentCommentCount(observationId, agentId);
-    const tagged = hasBeenTagged(observationId, agentId);
-    const cap = BASE_COMMENT_CAP + (tagged ? TAG_BONUS : 0);
+    const tagCount = getTagCount(observationId, agentId);
+    const cap = BASE_COMMENT_CAP + tagCount;
 
     if (agentCommentCount >= cap) {
       console.log(`[orchestrator] ${agentId} at comment cap (${agentCommentCount}/${cap}), skipping`);
@@ -155,8 +154,8 @@ export async function runOrchestrator(observationId: string): Promise<void> {
     );
 
     const skipInstruction = mustRespond
-      ? "\n\nYou have been tagged by another agent. You MUST respond with a substantive comment."
-      : "\n\nIf you have nothing new to add to this discussion, respond with exactly: [SKIP]";
+      ? "\n\nYou were tagged with a question. Answer it directly. Do not tag them back unless you have a separate question."
+      : "\n\nIf you have nothing new to add, respond with exactly: [SKIP]";
 
     console.log(`[orchestrator] Agent ${agentId} turn (mustRespond: ${mustRespond}, comments: ${agentCommentCount}/${cap})`);
 
@@ -178,18 +177,17 @@ export async function runOrchestrator(observationId: string): Promise<void> {
       lastActivityTime = Date.now();
       console.log(`[orchestrator] ${agentId} commented (${responseText.length} chars)`);
 
-      // Parse @mentions and update tags + queue
+      // Parse @mentions and record tags — only new (non-duplicate) tags affect queue
       const mentionedIds = parseMentions(responseText, agentIds, agentId);
+      const newTags: string[] = [];
       for (const toAgentId of mentionedIds) {
-        addTag(observationId, comment.id, agentId, toAgentId);
+        const tag = addTag(observationId, comment.id, agentId, toAgentId);
+        if (tag) newTags.push(toAgentId);
       }
 
-      // Reorder queue with mentions
-      queue = reorderQueue(queue, mentionedIds, agentId);
-
-      // Re-add commenting agent at back if not at cap
-      if (agentCommentCount + 1 < cap) {
-        queue.push({ agentId, mustRespond: false });
+      // Reorder queue only for genuinely new tags
+      if (newTags.length > 0) {
+        queue = reorderQueue(queue, newTags, agentId);
       }
     } catch (error) {
       console.error(`[orchestrator] Error with agent ${agentId}:`, error);
@@ -209,13 +207,18 @@ async function runVoting(observationId: string): Promise<void> {
   const comments = getComments(observationId);
   const observation = getObservation(observationId)!;
 
+  // Anonymize comments so voters judge arguments on merit, not authorship
+  const anonymized = comments.map((c, i) => ({
+    ...c,
+    agentName: `Agent ${i + 1}`,
+  }));
+
   for (const agent of agents) {
     const systemPrompt = agent.system_prompt;
-    const threadContext = renderUserMessage(
-      { title: observation.title, body: observation.body },
-      comments,
-      agents.map((a) => ({ id: a.id, name: a.name }))
-    );
+    const threadContext = renderThreadContext({
+      observation: { title: observation.title, body: observation.body },
+      comments: anonymized,
+    });
     const votePrompt = renderVotePrompt();
 
     console.log(`[orchestrator] Requesting vote from ${agent.id}`);

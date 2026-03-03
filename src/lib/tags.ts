@@ -13,34 +13,16 @@ export function parseMentions(text: string, validAgentIds: string[], excludeAgen
   return Array.from(mentions);
 }
 
-// Reorder the queue: move mentioned agents to front with mustRespond: true
-// Don't re-add agents that aren't in the queue (they may have hit their cap)
+// Prepend tagged entries to front of queue. The commenting agent's entry
+// was already shifted off by the orchestrator, so base entries stay intact.
 export function reorderQueue(
   queue: QueueEntry[],
   mentionedAgentIds: string[],
   commentingAgentId: string
 ): QueueEntry[] {
-  // Remove the commenting agent from wherever they are (they'll be re-added at back if eligible)
-  const filtered = queue.filter((e) => e.agentId !== commentingAgentId);
+  const tagged: QueueEntry[] = mentionedAgentIds
+    .filter((id) => id !== commentingAgentId)
+    .map((agentId) => ({ agentId, mustRespond: true }));
 
-  // Split: mentioned agents that are in the queue, and the rest
-  const mentioned: QueueEntry[] = [];
-  const rest: QueueEntry[] = [];
-
-  for (const entry of filtered) {
-    if (mentionedAgentIds.includes(entry.agentId)) {
-      mentioned.push({ ...entry, mustRespond: true });
-    } else {
-      rest.push(entry);
-    }
-  }
-
-  // Also add mentioned agents that weren't in the queue yet
-  for (const agentId of mentionedAgentIds) {
-    if (!mentioned.some((e) => e.agentId === agentId) && agentId !== commentingAgentId) {
-      mentioned.push({ agentId, mustRespond: true });
-    }
-  }
-
-  return [...mentioned, ...rest];
+  return [...tagged, ...queue];
 }

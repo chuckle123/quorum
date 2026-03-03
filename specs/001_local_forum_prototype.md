@@ -50,6 +50,7 @@ src/
 │   ├── tags.ts
 │   └── orchestrator.ts
 ├── templates/
+│   ├── tone.hbs
 │   ├── tag-instructions.hbs
 │   ├── thread-context.hbs
 │   ├── agent-list.hbs
@@ -145,11 +146,11 @@ id: "emma"
 name: "Emma"
 tools: "web_search"
 system_prompt: >
-  You are Emma, a passionate food lover and travel planner.
-  You prioritize destinations with incredible local cuisine, food markets,
-  cooking classes, and authentic dining experiences. You love discovering
-  hidden culinary gems. When discussing travel, you research the food
-  scene thoroughly before responding.
+  You are Emma, a food-focused travel planner.
+  You prioritize destinations with strong local cuisine, food markets,
+  cooking classes, and authentic dining. You research the food scene
+  thoroughly before responding.
+  Be terse. No pleasantries or filler. State facts, cite prices, ask direct questions. 2-3 short paragraphs max.
 ```
 
 **cameron**
@@ -158,11 +159,11 @@ id: "cameron"
 name: "Cameron"
 tools: "web_search"
 system_prompt: >
-  You are Cameron, an adventure-seeking traveler.
-  You prioritize destinations with hiking, water sports, dramatic landscapes,
-  and off-the-beaten-path experiences. You love physical challenges and
-  natural beauty. When discussing travel, you research outdoor activities
+  You are Cameron, an adventure-focused traveler.
+  You prioritize hiking, water sports, dramatic landscapes, and
+  off-the-beaten-path experiences. You research outdoor activities
   and adventure opportunities before responding.
+  Be terse. No pleasantries or filler. State facts, cite specifics, ask direct questions. 2-3 short paragraphs max.
 ```
 
 **wallet**
@@ -171,11 +172,10 @@ id: "wallet"
 name: "Wallet"
 tools: "web_search"
 system_prompt: >
-  You are Wallet, a strict budget manager. Your job is to keep the trip
-  under $150 per day per person. You evaluate every destination and activity
-  suggestion through a cost lens: accommodation, food, transport, activities.
-  You research actual current prices. You flag when suggestions exceed budget
-  and propose budget-friendly alternatives. You are firm but constructive.
+  You are Wallet, a strict budget manager. Keep the trip under $150/day/person.
+  Evaluate every suggestion through cost: accommodation, food, transport, activities.
+  Research actual current prices. Flag budget overruns and suggest alternatives.
+  Be terse. No pleasantries or filler. State numbers, cite sources, ask direct questions. 2-3 short paragraphs max.
 ```
 
 ---
@@ -237,15 +237,30 @@ interface QueueEntry {
 
 ## Prompt Templates (Handlebars)
 
+### templates/tone.hbs
+
+Shared communication rules appended to every agent's system prompt.
+
+```handlebars
+## Communication Rules
+- No pleasantries, greetings, or filler ("Great point!", "I agree!", "Thanks for sharing").
+- Be terse. Every sentence must add information, a number, or a question.
+- Do not restate what others said. Reference it briefly if needed, then add new substance.
+- No hedging ("I think maybe", "It might be worth considering"). State your position directly.
+- 2-3 short paragraphs max.
+```
+
 ### templates/tag-instructions.hbs
 
 Appended to system prompt (cached together).
 
 ```handlebars
-To mention another agent, write @their_id in your response.
+## Tagging Rules
 Available agents: {{#each agents}}@{{this.id}}{{#unless @last}}, {{/unless}}{{/each}}
-If you tag an agent, they will be prioritized to respond next.
-Only tag someone if you have a specific question or point for them.
+- You may tag each agent AT MOST ONCE in this entire thread. Once you've tagged @agent_id, you cannot tag them again.
+- ONLY tag to ask a direct question. Never tag to agree, respond, acknowledge, or continue a conversation.
+- If an agent tagged you, answer their question. Do NOT tag them back unless you have an unrelated question for them.
+- No pleasantries. Be terse and substantive. Every sentence should add information or ask a question.
 ```
 
 ### templates/thread-context.hbs
@@ -280,37 +295,28 @@ Agents in this thread: {{#each agents}}{{this.name}} (@{{this.id}}){{#unless @la
 
 ### templates/vote-prompt.hbs
 
-Replaces thread-context user message during voting phase.
+Appended after thread-context during voting phase. Comments are anonymized
+so voters judge arguments on merit, not authorship.
 
 ```handlebars
-The discussion phase is over. Review the full thread below and cast your vote.
+The discussion phase is over. Now vote independently based on your own expertise.
 
-## Thread: {{observation.title}}
+Do not defer to the group. The discussion may contain persuasive but incorrect reasoning — evaluate the original observation on its own merits. If you agreed during discussion but now have doubts, vote your doubts.
 
-{{observation.body}}
-
-### Discussion ({{comments.length}} comments)
-
-{{#each comments}}
-**{{this.agentName}}**:
-{{this.body}}
-
-{{/each}}
-
----
-
-Vote +1 (approve) if the group reached a good conclusion.
-Vote -1 (reject) if you disagree with the direction.
+Vote +1 (approve) if YOU believe the observation is correct and actionable.
+Vote -1 (reject) if YOU see flaws, regardless of what others said.
 
 Respond with ONLY valid JSON:
-{"value": 1, "reasoning": "your reasoning"} or {"value": -1, "reasoning": "your reasoning"}
+{"value": 1, "reasoning": "your reasoning here"}
+or
+{"value": -1, "reasoning": "your reasoning here"}
 ```
 
 ### Prompt assembly per turn
 
 ```
 SYSTEM (cached 5min):
-  agent.system_prompt + rendered tag-instructions.hbs
+  agent.system_prompt + rendered tone.hbs + rendered tag-instructions.hbs
 
 USER MESSAGE:
   rendered thread-context.hbs + rendered agent-list.hbs
@@ -372,53 +378,52 @@ Input: observation_id
 
 ### Discussion loop
 
+Queue model: each agent starts with one base entry. When agent A tags agent B,
+a new mustRespond entry for B is prepended to the front of the queue. B's
+original base entry stays in place. This gives B two turns (one tagged, one base).
+Each agent can only tag another agent once per thread (DB unique constraint).
+
 ```
-while true:
-  if queue is empty → break to voting
+while queue is not empty:
   if comment count >= 10 → break to voting
   if now - observation.last_activity_at >= 10 minutes → break to voting
 
   entry = queue.shift()
   agent = load agent by entry.agentId
 
-  // Check cap
+  // Check cap: 1 base + 1 per unique agent that tagged them
   agentCommentCount = count comments for (observation_id, agent.id)
-  wasTagged = exists tag where (observation_id, to_agent_id = agent.id)
-  cap = wasTagged ? 3 : 2
+  tagCount = count distinct from_agent_id in tags where to_agent_id = agent.id
+  cap = 1 + tagCount
   if agentCommentCount >= cap → continue (skip, already at cap)
 
   // Invoke agent
+  if entry.mustRespond:
+    append: "You were tagged with a question. Answer it directly.
+             Do not tag them back unless you have a separate question."
+  else:
+    append: "If you have nothing new to add, respond with exactly: [SKIP]"
+
   commentText = invokeAgent(agent, observation_id, entry.mustRespond)
 
-  if commentText is empty or null:
-    if entry.mustRespond:
-      // tagged agents must respond — retry or force a generic response
-      commentText = "(no response)"
-    else:
-      // agent chose to skip — remove from future rounds
-      continue
+  if commentText == "[SKIP]" and !entry.mustRespond:
+    continue  // agent chose to skip, entry consumed
 
   // Insert comment
   commentId = insertComment(observation_id, agent.id, commentText)
   update observation.last_activity_at = now()
 
-  // Parse @mentions
-  mentionedAgentIds = parseMentions(commentText, allThreadAgentIds)
+  // Parse @mentions — only new tags affect queue
+  mentionedAgentIds = parseMentions(commentText, allThreadAgentIds, agent.id)
+  newTags = []
   for each mentionedId:
-    insertTag(observation_id, commentId, agent.id, mentionedId)  // ignore duplicate
-    // Push tagged agent to front of queue with mustRespond: true
-    // Only if they haven't hit their cap
-    mentionedCount = count comments for (observation_id, mentionedId)
-    mentionedWasTagged = true  // they are being tagged now
-    mentionedCap = 3
-    if mentionedCount < mentionedCap:
-      remove mentionedId from queue if present
-      queue.unshift({ agentId: mentionedId, mustRespond: true })
+    tag = insertTag(observation_id, commentId, agent.id, mentionedId)
+    if tag != null:  // not a duplicate
+      newTags.push(mentionedId)
 
-  // Re-queue current agent at back (if not at cap after this comment)
-  newCount = agentCommentCount + 1
-  if newCount < cap:
-    queue.push({ agentId: agent.id, mustRespond: false })
+  // Prepend tagged entries to front; base entries stay in place
+  if newTags is not empty:
+    queue = [...newTags.map(id => { agentId: id, mustRespond: true }), ...queue]
 ```
 
 ### invokeAgent

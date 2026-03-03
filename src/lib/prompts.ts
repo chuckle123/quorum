@@ -7,6 +7,7 @@ let tagInstructionsTemplate: Handlebars.TemplateDelegate | null = null;
 let threadContextTemplate: Handlebars.TemplateDelegate | null = null;
 let agentListTemplate: Handlebars.TemplateDelegate | null = null;
 let votePromptTemplate: Handlebars.TemplateDelegate | null = null;
+let toneTemplate: Handlebars.TemplateDelegate | null = null;
 let partialsRegistered = false;
 
 function templatePath(filename: string): string {
@@ -25,6 +26,7 @@ function ensureTemplates() {
   threadContextTemplate = loadTemplate("thread-context.hbs");
   agentListTemplate = loadTemplate("agent-list.hbs");
   votePromptTemplate = loadTemplate("vote-prompt.hbs");
+  toneTemplate = loadTemplate("tone.hbs");
 
   if (!partialsRegistered) {
     Handlebars.registerPartial(
@@ -34,6 +36,10 @@ function ensureTemplates() {
     Handlebars.registerPartial(
       "agent-list",
       fs.readFileSync(templatePath("agent-list.hbs"), "utf-8")
+    );
+    Handlebars.registerPartial(
+      "tone",
+      fs.readFileSync(templatePath("tone.hbs"), "utf-8")
     );
     partialsRegistered = true;
   }
@@ -64,12 +70,18 @@ export function renderVotePrompt(): string {
   return votePromptTemplate!({});
 }
 
+export function renderTone(): string {
+  ensureTemplates();
+  return toneTemplate!({});
+}
+
 export function renderSystemPrompt(
   agentSystemPrompt: string,
   agents: { id: string }[]
 ): string {
+  const tone = renderTone();
   const tagInstructions = renderTagInstructions(agents);
-  return `${agentSystemPrompt}\n\n${tagInstructions}`;
+  return `${agentSystemPrompt}\n\n${tone}\n\n${tagInstructions}`;
 }
 
 export function renderUserMessage(

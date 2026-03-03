@@ -274,16 +274,16 @@ export function getTags(observationId: string): Tag[] {
     .all(observationId) as Tag[];
 }
 
-export function hasBeenTagged(
+export function getTagCount(
   observationId: string,
   agentId: string
-): boolean {
+): number {
   const row = getDb()
     .prepare(
-      "SELECT COUNT(*) as count FROM tags WHERE observation_id = ? AND to_agent_id = ?"
+      "SELECT COUNT(DISTINCT from_agent_id) as count FROM tags WHERE observation_id = ? AND to_agent_id = ?"
     )
     .get(observationId, agentId) as { count: number };
-  return row.count > 0;
+  return row.count;
 }
 
 // --- Votes ---
